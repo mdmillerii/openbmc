@@ -101,6 +101,7 @@ rwdev=/dev/mtdblock${rwfs#mtd}
 # Set to y for yes, anything else for no.
 force_rwfst_jffs2=y
 flash_images_before_init=n
+consider_openbmc_download_files=y
 
 rofst=squashfs
 rwfst=$(probe_fs_type $rwdev)
@@ -129,6 +130,20 @@ echo rofs = $rofs $rofst   rwfs = $rwfs $rwfst
 if grep -w debug-init-sh $optfile
 then
 	debug_takeover "Debug initial shell requested by command line."
+fi
+
+if test "x$consider_openbmc_download_files" = xy &&
+	grep -w openbmc-init-download-files $optfile
+then
+	echo "Executing download hook..."
+	cmd="$(get_fw_env_var openbmcinitdownload)"
+	if test -z "$cmd"
+	then
+		echo 2>&1 "Download command not found or empty, skipping."
+	elif ! sh -xc "$cmd"
+	then
+		debug_takeover "Download command '$cmd' failed."
+	fi
 fi
 
 # If there are images in root move them to /run/initramfs/ or /run/ now.
