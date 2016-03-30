@@ -96,7 +96,7 @@ toram=
 checksize=y
 checkmount=y
 
-whitelist=/run/initramfs/whitelist
+whitelist=/run/initramfs/whitelist.d/
 image=/run/initramfs/image-
 E="ERROR:"
 imglist=
@@ -188,7 +188,9 @@ then
 		done
 		mkdir -p "${d%/*}"
 		cp -rp "$upper/$f" "${d%/*}/"
-	done < $whitelist
+	done << HERE
+$(grep -v ^# $whitelist*)
+HERE
 
 	if test -n "$mounted"
 	then
