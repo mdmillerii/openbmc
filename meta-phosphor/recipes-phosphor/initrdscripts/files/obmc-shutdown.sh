@@ -34,7 +34,7 @@ update=/run/initramfs/update
 image=/run/initramfs/image-
 
 wdt="-t 1 -T 5"
-wdrst="-T 15"
+wdrst="-T 150"
 
 if ls $image* > /dev/null 2>&1
 then
