@@ -14,36 +14,27 @@ then
 else
 	umount_proc=
 fi
-api=/run/initramfs
-if [ ! -f $api/shutdown ]
-then
-	mkdir -p $api
-	mount --bind / $api
-fi
 
 # Remove an empty oldroot, that means we are not invoked from systemd-shutdown
 rmdir /oldroot 2>/dev/null
 
 # Move /oldroot/run to /mnt in case it has the underlying rofs loop mounted.
 # Ordered before /oldroot the overlay is unmounted before the loop mount
-# Unmount under initramfs but not the initramfs directory itself
-# Also unmount /ro and /rw if they are mounted (/run/initramfs/{ro,rw} before pivot)
 mkdir -p /mnt
 mount --move /oldroot/run /mnt
 
 set -x
-awk '/oldroot|mnt|initramfs[^ ]/ { print $2 } / .r[ow] / { print $2 }' < /proc/mounts |
-	sort -r | while IFS= read -r f
+awk '/oldroot|mnt/ { print $2 }' < /proc/mounts | sort -r | while IFS= read -r f
 do
 	umount "$f"
 done
 set +x
 
-update=$api/update
-image=$api/image-
+update=/run/initramfs/update
+image=/run/initramfs/image-
 
 wdt="-t 1 -T 5"
-wdrst="-T 150"
+wdrst="-T 15"
 
 if ls $image* > /dev/null 2>&1
 then

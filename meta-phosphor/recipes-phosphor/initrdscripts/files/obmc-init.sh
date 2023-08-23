@@ -1,9 +1,8 @@
 #!/bin/sh
 
 fslist="proc sys dev run"
-api=run/initramfs
-rodir=$api/ro
-rwdir=$api/rw
+rodir=run/initramfs/ro
+rwdir=run/initramfs/rw
 upper=$rwdir/cow
 work=$rwdir/work
 
@@ -13,21 +12,14 @@ mkdir -p $fslist
 mount dev dev -tdevtmpfs
 mount sys sys -tsysfs
 mount proc proc -tproc
-if grep $api proc/mounts
-then
-	umount $api
-fi
 if ! grep run proc/mounts
 then
 	mount tmpfs run -t tmpfs -o mode=755,nodev
 fi
 
-mkdir -p $api
-mount initrd $api -t tmpfs
-cp -rp init shutdown update whitelist bin sbin usr lib etc var $api
-
 mkdir -p $rodir $rwdir
 
+cp -rp init shutdown update whitelist bin sbin usr lib etc var run/initramfs
 
 # To start a interactive shell with job control at this point, run
 # getty 38400 ttyS4
