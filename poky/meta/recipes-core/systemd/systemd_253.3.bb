@@ -10,13 +10,9 @@ SECTION = "base/shell"
 
 inherit useradd pkgconfig meson perlnative update-rc.d update-alternatives qemu systemd gettext bash-completion manpages features_check
 
-# unmerged-usr support is deprecated upstream, taints the system and will be
-# removed in the near future. Fail the build if it is not enabled.
-REQUIRED_DISTRO_FEATURES += "usrmerge"
-
 # As this recipe builds udev, respect systemd being in DISTRO_FEATURES so
 # that we don't build both udev and systemd in world builds.
-REQUIRED_DISTRO_FEATURES += "systemd"
+REQUIRED_DISTRO_FEATURES = "systemd"
 
 SRC_URI += " \
            file://touchscreen.rules \
@@ -30,6 +26,8 @@ SRC_URI += " \
            file://0002-binfmt-Don-t-install-dependency-links-at-install-tim.patch \
            file://0008-implment-systemd-sysv-install-for-OE.patch \
            file://0004-Move-sysusers.d-sysctl.d-binfmt.d-modules-load.d-to-.patch \
+           file://27254.patch \
+           file://27253.patch \
            "
 
 # patches needed by musl
@@ -41,6 +39,7 @@ SRC_URI_MUSL = "\
                file://0012-don-t-fail-if-GLOB_BRACE-and-GLOB_ALTDIRFUNC-is-not-.patch \
                file://0013-add-missing-FTW_-macros-for-musl.patch \
                file://0014-Use-uintmax_t-for-handling-rlim_t.patch \
+               file://0015-test-sizeof.c-Disable-tests-for-missing-typedefs-in-.patch \
                file://0016-don-t-pass-AT_SYMLINK_NOFOLLOW-flag-to-faccessat.patch \
                file://0017-Define-glibc-compatible-basename-for-non-glibc-syste.patch \
                file://0018-Do-not-disable-buffering-when-writing-to-oom_score_a.patch \
@@ -54,11 +53,6 @@ SRC_URI_MUSL = "\
                file://0001-Adjust-for-musl-headers.patch \
                file://0006-test-bus-error-strerror-is-assumed-to-be-GNU-specifi.patch \
                file://0003-errno-util-Make-STRERROR-portable-for-musl.patch \
-               file://0025-include-sys-file.h-for-LOCK_EX.patch \
-               file://0026-test-test-sizeof-Include-sys-timex.h-for-struct-time.patch \
-               file://0027-include-missing-sys-file.h-for-LOCK_EX.patch \
-               file://0028-sd-event-Make-malloc_trim-conditional-on-glibc.patch \
-               file://0029-shared-Do-not-use-malloc_info-on-musl.patch \
                "
 
 PAM_PLUGINS = " \
@@ -146,7 +140,8 @@ PACKAGECONFIG[default-compression-lz4] = "-Dlz4=true -Ddefault-compression=lz4,,
 PACKAGECONFIG[default-compression-xz] = "-Dxz=true -Ddefault-compression=xz,,xz"
 PACKAGECONFIG[default-compression-zstd] = "-Dzstd=true -Ddefault-compression=zstd,,zstd"
 PACKAGECONFIG[dbus] = "-Ddbus=true,-Ddbus=false,dbus"
-PACKAGECONFIG[efi] = "-Defi=true -Dbootloader=true,-Defi=false -Dbootloader=false,python3-pyelftools"
+PACKAGECONFIG[efi] = "-Defi=true,-Defi=false"
+PACKAGECONFIG[gnu-efi] = "-Dgnu-efi=true -Defi-libdir=${STAGING_LIBDIR} -Defi-includedir=${STAGING_INCDIR}/efi,-Dgnu-efi=false,gnu-efi"
 PACKAGECONFIG[elfutils] = "-Delfutils=true,-Delfutils=false,elfutils"
 PACKAGECONFIG[firstboot] = "-Dfirstboot=true,-Dfirstboot=false"
 PACKAGECONFIG[repart] = "-Drepart=true,-Drepart=false"
@@ -163,7 +158,6 @@ PACKAGECONFIG[ima] = "-Dima=true,-Dima=false"
 PACKAGECONFIG[importd] = "-Dimportd=true,-Dimportd=false,glib-2.0"
 # Update NAT firewall rules
 PACKAGECONFIG[iptc] = "-Dlibiptc=true,-Dlibiptc=false,iptables"
-PACKAGECONFIG[journal-color] = ",,,less"
 PACKAGECONFIG[journal-upload] = "-Dlibcurl=true,-Dlibcurl=false,curl"
 PACKAGECONFIG[kmod] = "-Dkmod=true,-Dkmod=false,kmod"
 PACKAGECONFIG[ldconfig] = "-Dldconfig=true,-Dldconfig=false,,ldconfig"
@@ -246,9 +240,7 @@ EXTRA_OEMESON += "-Dnobody-user=nobody \
                   -Dsystem-gid-max=999 \
                   "
 
-# Hardcode target binary paths to avoid using paths from sysroot or worse
-# it pokes for these binaries on build host and encodes that distro assumption
-# into target
+# Hardcode target binary paths to avoid using paths from sysroot
 EXTRA_OEMESON += "-Dkexec-path=${sbindir}/kexec \
                   -Dkmod-path=${base_bindir}/kmod \
                   -Dmount-path=${base_bindir}/mount \
@@ -256,9 +248,7 @@ EXTRA_OEMESON += "-Dkexec-path=${sbindir}/kexec \
                   -Dquotaon-path=${sbindir}/quotaon \
                   -Dsulogin-path=${base_sbindir}/sulogin \
                   -Dnologin-path=${base_sbindir}/nologin \
-                  -Dumount-path=${base_bindir}/umount \
-                  -Dloadkeys-path=${bindir}/loadkeys \
-                  -Dsetfont-path=${bindir}/setfont"
+                  -Dumount-path=${base_bindir}/umount"
 
 # The 60 seconds is watchdog's default vaule.
 WATCHDOG_TIMEOUT ??= "60"
@@ -434,7 +424,7 @@ USERADD_PACKAGES = "${PN} ${PN}-extra-utils \
                     ${@bb.utils.contains('PACKAGECONFIG', 'journal-upload', '${PN}-journal-upload', '', d)} \
 "
 GROUPADD_PARAM:${PN} = "-r systemd-journal;"
-GROUPADD_PARAM:udev = "-r render"
+GROUPADD_PARAM:udev = "-r render;-r sgx;"
 GROUPADD_PARAM:${PN} += "${@bb.utils.contains('PACKAGECONFIG', 'polkit_hostnamed_fallback', '-r systemd-hostname;', '', d)}"
 USERADD_PARAM:${PN} += "${@bb.utils.contains('PACKAGECONFIG', 'coredump', '--system -d / -M --shell /sbin/nologin systemd-coredump;', '', d)}"
 USERADD_PARAM:${PN} += "${@bb.utils.contains('PACKAGECONFIG', 'networkd', '--system -d / -M --shell /sbin/nologin systemd-network;', '', d)}"
@@ -562,7 +552,6 @@ FILES:${PN}-extra-utils = "\
                         ${bindir}/systemd-stdio-bridge \
                         ${base_bindir}/systemd-ask-password \
                         ${base_bindir}/systemd-tty-ask-password-agent \
-                        ${base_sbindir}/mount.ddi \
                         ${systemd_system_unitdir}/initrd.target.wants/systemd-pcrphase-initrd.path \
                         ${systemd_system_unitdir}/systemd-ask-password-console.path \
                         ${systemd_system_unitdir}/systemd-ask-password-console.service \
@@ -633,8 +622,6 @@ FILES:${PN} = " ${base_bindir}/* \
                 ${datadir}/polkit-1 \
                 ${datadir}/${BPN} \
                 ${datadir}/factory \
-                ${sysconfdir}/credstore/ \
-                ${sysconfdir}/credstore.encrypted/ \
                 ${sysconfdir}/dbus-1/ \
                 ${sysconfdir}/modules-load.d/ \
                 ${sysconfdir}/pam.d/ \
@@ -663,7 +650,6 @@ FILES:${PN} = " ${base_bindir}/* \
                 ${bindir}/bootctl \
                 ${bindir}/oomctl \
                 ${bindir}/userdbctl \
-                ${exec_prefix}/lib/credstore \
                 ${exec_prefix}/lib/tmpfiles.d/*.conf \
                 ${exec_prefix}/lib/systemd \
                 ${exec_prefix}/lib/modules-load.d \
@@ -689,7 +675,7 @@ FILES:${PN} = " ${base_bindir}/* \
 
 FILES:${PN}-dev += "${base_libdir}/security/*.la ${datadir}/dbus-1/interfaces/ ${sysconfdir}/rpm/macros.systemd"
 
-RDEPENDS:${PN} += "kmod dbus util-linux-mount util-linux-umount udev (= ${EXTENDPKGV}) systemd-udev-rules util-linux-agetty util-linux-fsck util-linux-swaponoff"
+RDEPENDS:${PN} += "kmod dbus util-linux-mount util-linux-umount udev (= ${EXTENDPKGV}) systemd-udev-rules util-linux-agetty util-linux-fsck"
 RDEPENDS:${PN} += "${@bb.utils.contains('PACKAGECONFIG', 'serial-getty-generator', '', 'systemd-serialgetty', d)}"
 RDEPENDS:${PN} += "volatile-binds"
 
@@ -699,7 +685,6 @@ RRECOMMENDS:${PN} += "systemd-extra-utils \
                       kernel-module-autofs4 kernel-module-unix kernel-module-ipv6 kernel-module-sch-fq-codel \
                       os-release \
                       systemd-conf \
-                      ${@bb.utils.contains('PACKAGECONFIG', 'logind', 'pam-plugin-umask', '', d)} \
 "
 
 INSANE_SKIP:${PN} += "dev-so libdir"
@@ -723,7 +708,6 @@ FILES:udev += "${base_sbindir}/udevd \
                ${rootlibexecdir}/udev/dmi_memory_id \
                ${rootlibexecdir}/udev/fido_id \
                ${rootlibexecdir}/udev/findkeyboards \
-               ${rootlibexecdir}/udev/iocost \
                ${rootlibexecdir}/udev/keyboard-force-release.sh \
                ${rootlibexecdir}/udev/keymap \
                ${rootlibexecdir}/udev/mtd_probe \
@@ -735,7 +719,6 @@ FILES:udev += "${base_sbindir}/udevd \
                ${rootlibexecdir}/udev/rules.d/60-autosuspend-chromiumos.rules \
                ${rootlibexecdir}/udev/rules.d/60-block.rules \
                ${rootlibexecdir}/udev/rules.d/60-cdrom_id.rules \
-               ${rootlibexecdir}/udev/rules.d/60-dmi-id.rules \
                ${rootlibexecdir}/udev/rules.d/60-drm.rules \
                ${rootlibexecdir}/udev/rules.d/60-evdev.rules \
                ${rootlibexecdir}/udev/rules.d/60-fido-id.rules \
@@ -763,7 +746,6 @@ FILES:udev += "${base_sbindir}/udevd \
                ${rootlibexecdir}/udev/rules.d/80-net-setup-link.rules \
                ${rootlibexecdir}/udev/rules.d/81-net-dhcp.rules \
                ${rootlibexecdir}/udev/rules.d/90-vconsole.rules \
-               ${rootlibexecdir}/udev/rules.d/90-iocost.rules \
                ${rootlibexecdir}/udev/rules.d/README \
                ${sysconfdir}/udev \
                ${sysconfdir}/init.d/systemd-udevd \

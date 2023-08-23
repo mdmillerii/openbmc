@@ -36,7 +36,7 @@ diff --git a/src/shared/base-filesystem.c b/src/shared/base-filesystem.c
 index 2726dc946a..484f63e0b4 100644
 --- a/src/shared/base-filesystem.c
 +++ b/src/shared/base-filesystem.c
-@@ -20,6 +20,7 @@
+@@ -19,6 +19,7 @@
  #include "string-util.h"
  #include "umask-util.h"
  #include "user-util.h"

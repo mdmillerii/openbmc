@@ -3,28 +3,29 @@ FILESEXTRAPATHS =. "${FILE_DIRNAME}/systemd:"
 
 require conf/image-uefi.conf
 
-DEPENDS = "intltool-native libcap util-linux gperf-native python3-jinja2-native python3-pyelftools-native"
+DEPENDS = "intltool-native libcap util-linux gnu-efi gperf-native python3-jinja2-native"
 
 inherit meson pkgconfig gettext
 inherit deploy
 
 LDFLAGS:prepend = "${@ " ".join(d.getVar('LD').split()[1:])} "
 
-EFI_LD = "bfd"
-LDFLAGS:append = " -fuse-ld=${EFI_LD}"
-
-do_write_config[vardeps] += "CC OBJCOPY EFI_LD"
+do_write_config[vardeps] += "CC OBJCOPY"
 do_write_config:append() {
     cat >${WORKDIR}/meson-${PN}.cross <<EOF
 [binaries]
-c = ${@meson_array('CC', d)}
+efi_cc = ${@meson_array('CC', d)}
 objcopy = ${@meson_array('OBJCOPY', d)}
-c_ld = ${@meson_array('EFI_LD', d)}
 EOF
 }
 
+EFI_LD = "bfd"
+
 EXTRA_OEMESON += "-Defi=true \
-                  -Dbootloader=true \
+                  -Dgnu-efi=true \
+                  -Defi-includedir=${STAGING_INCDIR}/efi \
+                  -Defi-libdir=${STAGING_LIBDIR} \
+                  -Defi-ld=${EFI_LD} \
                   -Dman=false \
                   --cross-file ${WORKDIR}/meson-${PN}.cross \
                   "
@@ -53,7 +54,9 @@ COMPATIBLE_HOST = "(aarch64.*|arm.*|x86_64.*|i.86.*)-linux"
 COMPATIBLE_HOST:x86-x32 = "null"
 
 do_compile() {
-	ninja systemd-boot
+	ninja \
+		src/boot/efi/${SYSTEMD_BOOT_IMAGE_PREFIX}${SYSTEMD_BOOT_IMAGE} \
+		src/boot/efi/linux${EFI_ARCH}.efi.stub
 }
 
 do_install() {
@@ -64,7 +67,6 @@ do_install() {
 do_deploy () {
 	install ${B}/src/boot/efi/systemd-boot*.efi ${DEPLOYDIR}
 	install ${B}/src/boot/efi/linux*.efi.stub ${DEPLOYDIR}
-	install ${B}/src/boot/efi/addon*.efi.stub ${DEPLOYDIR}
 }
 
 addtask deploy before do_build after do_compile

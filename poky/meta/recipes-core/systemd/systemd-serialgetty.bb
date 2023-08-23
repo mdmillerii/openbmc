@@ -14,8 +14,7 @@ S = "${WORKDIR}"
 
 # As this package is tied to systemd, only build it when we're also building systemd.
 inherit features_check
-REQUIRED_DISTRO_FEATURES += "systemd"
-REQUIRED_DISTRO_FEATURES += "usrmerge"
+REQUIRED_DISTRO_FEATURES = "systemd"
 
 do_install() {
 	if [ ! -z "${SERIAL_CONSOLES}" ] ; then
