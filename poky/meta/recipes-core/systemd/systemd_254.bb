@@ -34,7 +34,7 @@ SRC_URI += " \
 #
 
 # patches needed by musl
-SRC_URI:append:libc-musl = " ${SRC_URI_MUSL}"
+#SRC_URI:append:libc-musl = " ${SRC_URI_MUSL}"
 SRC_URI_MUSL = "\
                file://0009-missing_type.h-add-comparison_fn_t.patch \
                file://0010-add-fallback-parse_printf_format-implementation.patch \

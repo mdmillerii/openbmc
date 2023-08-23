@@ -1,4 +1,4 @@
-From 5712d56f1cd654d2e5d2e9117ff77fe4c299f76b Mon Sep 17 00:00:00 2001
+From 0bb31f7e4420f9da6455fad9e29b541e4ee8440b Mon Sep 17 00:00:00 2001
 From: Khem Raj <raj.khem@gmail.com>
 Date: Sat, 5 Sep 2015 06:31:47 +0000
 Subject: [PATCH] implment systemd-sysv-install for OE
@@ -9,6 +9,7 @@ to check the status of the sysv service
 Upstream-Status: Inappropriate [OE-Specific]
 
 Signed-off-by: Khem Raj <raj.khem@gmail.com>
+
 ---
  src/systemctl/systemd-sysv-install.SKELETON | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
@@ -38,6 +39,3 @@ index cb58d8243b..000bdf6165 100755
          ;;
      *)
          usage ;;
--- 
-2.39.2
-
