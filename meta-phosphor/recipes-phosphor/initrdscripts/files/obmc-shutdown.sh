@@ -20,11 +20,13 @@ rmdir /oldroot 2>/dev/null
 
 # Move /oldroot/run to /mnt in case it has the underlying rofs loop mounted.
 # Ordered before /oldroot the overlay is unmounted before the loop mount
+# Also unmount /ro and /rw as /./ro and /./rw to unmount last
 mkdir -p /mnt
 mount --move /oldroot/run /mnt
 
 set -x
-awk '/oldroot|mnt/ { print $2 }' < /proc/mounts | sort -r | while IFS= read -r f
+awk '/oldroot|mnt/ { print $2 } / .r[ow] / { print "/." $2 }' < /proc/mounts |
+	sort -r | while IFS= read -r f
 do
 	umount "$f"
 done
