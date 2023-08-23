@@ -29,8 +29,9 @@ SRC_URI += " \
            file://systemd-pager.sh \
            file://0002-binfmt-Don-t-install-dependency-links-at-install-tim.patch \
            file://0008-implment-systemd-sysv-install-for-OE.patch \
-           file://0004-Move-sysusers.d-sysctl.d-binfmt.d-modules-load.d-to-.patch \
            "
+#           file://0004-Move-sysusers.d-sysctl.d-binfmt.d-modules-load.d-to-.patch \
+#
 
 # patches needed by musl
 SRC_URI:append:libc-musl = " ${SRC_URI_MUSL}"

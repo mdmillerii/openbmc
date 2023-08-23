@@ -14,10 +14,9 @@ LICENSE = "GPL-2.0-only & LGPL-2.1-only"
 LIC_FILES_CHKSUM = "file://LICENSE.GPL2;md5=751419260aa954499f7abaabaa882bbe \
                     file://LICENSE.LGPL2.1;md5=4fbd65380cdd255951079008b364516c"
 
-SRCREV = "994c7978608a0bd9b317f4f74ff266dd50a3e74e"
-SRCBRANCH = "v254-stable"
-SRC_URI = "git://github.com/systemd/systemd-stable.git;protocol=https;branch=${SRCBRANCH} \
-           file://0001-elf2efi-Fix-header-size-calculation.patch \
+SRCREV = "b26c345279b6232afe6bc5cf9eb9d1b8514ceba0"
+SRCBRANCH = "main"
+SRC_URI = "git://github.com/systemd/systemd.git;protocol=https;branch=${SRCBRANCH} \
            "
 
 S = "${WORKDIR}/git"
