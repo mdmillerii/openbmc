@@ -14,6 +14,12 @@ then
 else
 	umount_proc=
 fi
+api=/run/initramfs
+if [ ! -f $api/shutdown ]
+then
+	mkdir -p $api
+	mount --bind / $api
+fi
 
 # Remove an empty oldroot, that means we are not invoked from systemd-shutdown
 rmdir /oldroot 2>/dev/null
@@ -33,8 +39,8 @@ do
 done
 set +x
 
-update=/run/initramfs/update
-image=/run/initramfs/image-
+update=$api/update
+image=$api/image-
 
 wdt="-t 1 -T 5"
 wdrst="-T 15"
