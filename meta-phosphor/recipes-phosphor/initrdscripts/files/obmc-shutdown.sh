@@ -20,11 +20,14 @@ rmdir /oldroot 2>/dev/null
 
 # Move /oldroot/run to /mnt in case it has the underlying rofs loop mounted.
 # Ordered before /oldroot the overlay is unmounted before the loop mount
+# Unmount under initramfs but not the initramfs directory itself
+# Also unmount /ro and /rw if they are mounted (/run/initramfs/{ro,rw} before pivot)
 mkdir -p /mnt
 mount --move /oldroot/run /mnt
 
 set -x
-awk '/oldroot|mnt/ { print $2 }' < /proc/mounts | sort -r | while IFS= read -r f
+awk '/oldroot|mnt|initramfs[^ ]/ { print $2 } / .r[ow] / { print $2 }' < /proc/mounts |
+	sort -r | while IFS= read -r f
 do
 	umount "$f"
 done
