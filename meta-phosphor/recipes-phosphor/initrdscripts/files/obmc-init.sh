@@ -2,12 +2,6 @@
 
 fslist="proc sys dev run"
 api=run/initramfs
-#mnt=$api
-mnt=run/mnt
-rodir=$mnt/ro
-rwdir=$mnt/rw
-upper=$rwdir/cow
-work=$rwdir/work
 
 cd /
 # shellcheck disable=SC2086
@@ -23,14 +17,6 @@ if ! grep run proc/mounts
 then
 	mount tmpfs run -t tmpfs -o mode=755,nodev
 fi
-
-mkdir -p $api
-#mount initrd $api -t tmpfs
-#mount  --bind $api $api
-cp -rp init shutdown update whitelist bin sbin usr lib etc var $api
-
-mkdir -p $rodir $rwdir
-
 
 # To start a interactive shell with job control at this point, run
 # getty 38400 ttyS4
@@ -204,6 +190,8 @@ optfile=/run/initramfs/init-options
 optbase=/run/initramfs/init-options-base
 urlfile=/run/initramfs/init-download-url
 
+mkdir -p ${optfile%/*}
+
 if test -e /${optfile##*/}
 then
 	cp /${optfile##*/} $optfile
@@ -235,13 +223,51 @@ then
 	fi
 fi
 
+mkdir -p $api
+if grep -w mount-bind-run-initramfs $optfile
+then
+	mount --bind $api $api
+elif grep -w mount-tmpfs-run-initramfs $optfile
+then
+	optstmpd=run/initoptstmp
+	rm -rf $optstmpd
+	mkdir -p $optstmpd
+	cp $optfile $optbase $optstmpd
+
+	mount initrd $api -t tmpfs
+
+	mv $optstmpd/* $api
+	rmdir $optstmpd
+fi
+cp -rp init shutdown update whitelist bin sbin usr lib etc var $api
+
+if test -f ${urlfile##*/}
+then
+	cp ${urlfile##*/} $urlfile
+	if test ${urlfile%/*} != $api
+	then
+		cp -p $urlfile $api
+	fi
+fi
+
+if grep -w mount-under-run-mnt $optfile
+then
+	mnt=run/mnt
+else
+	mnt=$api
+fi
+
+rodir=$mnt/ro
+rwdir=$mnt/rw
+upper=$rwdir/cow
+work=$rwdir/work
+
+mkdir -p $rodir $rwdir
+
+
 if test "$consider_download_files" = "y" &&
 	grep -w openbmc-init-download-files $optfile
 then
-	if test -f ${urlfile##*/}
-	then
-		cp ${urlfile##*/} $urlfile
-	fi
 	if test ! -f $urlfile
 	then
 		get_fw_env_var openbmcinitdownloadurl > $urlfile
