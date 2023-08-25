@@ -158,34 +158,6 @@ HERE
 	fi
 }
 
-rofs=$(findmtd rofs)
-rwfs=$(findmtd rwfs)
-
-rodev=/dev/mtdblock${rofs#mtd}
-rwdev=/dev/mtdblock${rwfs#mtd}
-
-# Set to y for yes, anything else for no.
-force_rwfst_jffs2=y
-flash_images_before_init=n
-consider_download_files=y
-consider_download_tftp=y
-consider_download_http=y
-consider_download_ftp=y
-
-rofst=squashfs
-rwfst=$(probe_fs_type "$rwdev")
-roopts=ro
-rwopts=rw
-
-image=$api/image-
-update=$api/update
-trigger=${image}rwfs
-
-init=/sbin/init
-fsckbase=/sbin/fsck.
-fsck=$fsckbase$rwfst
-fsckopts=-a
-
 optfile=/run/initramfs/init-options
 optbase=/run/initramfs/init-options-base
 urlfile=/run/initramfs/init-download-url
@@ -210,8 +182,6 @@ then
 	get_fw_env_var openbmcinit >> $optfile
 	get_fw_env_var openbmconce >> $optfile
 fi
-
-echo "rofs = $rofs $rofst   rwfs = $rwfs $rwfst"
 
 if grep -w debug-init-sh $optfile
 then
@@ -264,6 +234,35 @@ work=$rwdir/work
 
 mkdir -p $rodir $rwdir
 
+rofs=$(findmtd rofs)
+rwfs=$(findmtd rwfs)
+
+rodev=/dev/mtdblock${rofs#mtd}
+rwdev=/dev/mtdblock${rwfs#mtd}
+
+# Set to y for yes, anything else for no.
+force_rwfst_jffs2=y
+flash_images_before_init=n
+consider_download_files=y
+consider_download_tftp=y
+consider_download_http=y
+consider_download_ftp=y
+
+rofst=squashfs
+rwfst=$(probe_fs_type "$rwdev")
+roopts=ro
+rwopts=rw
+
+image=$api/image-
+update=$api/update
+trigger=${image}rwfs
+
+init=/sbin/init
+fsckbase=/sbin/fsck.
+fsck=$fsckbase$rwfst
+fsckopts=-a
+
+echo "rofs = $rofs $rofst   rwfs = $rwfs $rwfst"
 
 if test "$consider_download_files" = "y" &&
 	grep -w openbmc-init-download-files $optfile
