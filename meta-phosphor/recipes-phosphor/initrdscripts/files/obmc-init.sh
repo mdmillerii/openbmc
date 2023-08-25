@@ -1,8 +1,11 @@
 #!/bin/sh
 
 fslist="proc sys dev run"
-rodir=run/initramfs/ro
-rwdir=run/initramfs/rw
+api=run/initramfs
+#mnt=$api
+mnt=run/mnt
+rodir=$mnt/ro
+rwdir=$mnt/rw
 upper=$rwdir/cow
 work=$rwdir/work
 
@@ -12,14 +15,22 @@ mkdir -p $fslist
 mount dev dev -tdevtmpfs
 mount sys sys -tsysfs
 mount proc proc -tproc
+if grep $api proc/mounts
+then
+	umount $api
+fi
 if ! grep run proc/mounts
 then
 	mount tmpfs run -t tmpfs -o mode=755,nodev
 fi
 
+mkdir -p $api
+#mount initrd $api -t tmpfs
+#mount  --bind $api $api
+cp -rp init shutdown update whitelist bin sbin usr lib etc var $api
+
 mkdir -p $rodir $rwdir
 
-cp -rp init shutdown update whitelist bin sbin usr lib etc var run/initramfs
 
 # To start a interactive shell with job control at this point, run
 # getty 38400 ttyS4
@@ -180,17 +191,18 @@ rwfst=$(probe_fs_type "$rwdev")
 roopts=ro
 rwopts=rw
 
-image=/run/initramfs/image-
+image=$api/image-
+update=$api/update
 trigger=${image}rwfs
 
 init=/sbin/init
 fsckbase=/sbin/fsck.
 fsck=$fsckbase$rwfst
 fsckopts=-a
+
 optfile=/run/initramfs/init-options
 optbase=/run/initramfs/init-options-base
 urlfile=/run/initramfs/init-download-url
-update=/run/initramfs/update
 
 if test -e /${optfile##*/}
 then

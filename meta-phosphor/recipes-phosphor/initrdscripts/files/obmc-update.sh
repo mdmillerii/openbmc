@@ -88,6 +88,11 @@ rwopts=rw
 rorwopts=ro${rwopts#rw}
 
 rwdir=/run/initramfs/rw
+rwalt=/run/mnt/rw
+if test -d $rwalt
+then
+	rwdir="$rwalt"
+fi
 upper=$rwdir/cow
 save=/run/save/${upper##*/}
 
