@@ -2,6 +2,9 @@
 
 echo shutdown: "$@"
 
+wdt="-t 1 -T 5"
+wdrst="-T 150"
+
 export PS1="shutdown-sh# "
 # exec bin/sh
 
@@ -15,28 +18,46 @@ else
 	umount_proc=
 fi
 
+# for the log, how was init setup and what was left mounted
+cat /init-options /proc/mounts
+
 # Remove an empty oldroot, that means we are not invoked from systemd-shutdown
 rmdir /oldroot 2>/dev/null
 
 # Move /oldroot/run to /mnt in case it has the underlying rofs loop mounted.
 # Ordered before /oldroot the overlay is unmounted before the loop mount
-# Also unmount /ro and /rw as /./ro and /./rw to unmount last
+# Unmount under initramfs but not the initramfs directory itself
+# Also unmount /ro and /rw if they are mounted (/run/initramfs/{ro,rw} before pivot)
 mkdir -p /mnt
 mount --move /oldroot/run /mnt
 
+script='/oldroot|mnt/ { print $2 }'
+#script='/oldroot|mnt|initramfs/ { print $2 }'
+#script='/oldroot|mnt|initramfs[^ ]/ { print $2 }'
+#script="$script"' / .r[ow] / { print $2 }'
+scriptfile=/shutdown-filter.awk
+test -f $scriptfile || echo "$script" > $scriptfile
+cat $scriptfile
 set -x
-awk '/oldroot|mnt/ { print $2 } / .r[ow] / { print "/." $2 }' < /proc/mounts |
+awk -f $scriptfile < /proc/mounts |
 	sort -r | while IFS= read -r f
 do
 	umount "$f"
 done
 set +x
 
-update=/run/initramfs/update
-image=/run/initramfs/image-
+# If we mounted a separate filesystem at /run/initramfs then its now
+# root and not at the original /run/initramfs.   Re-establish to
+# run the update script in it's expected enviornment.
+api=/run/initramfs
+update=$api/update
+image=$api/image-
 
-wdt="-t 1 -T 5"
-wdrst="-T 150"
+if [ ! -f $api/shutdown ]
+then
+	mkdir -p $api
+	mount --bind / $api
+fi
 
 if ls $image* > /dev/null 2>&1
 then
@@ -85,6 +106,9 @@ cat /proc/mounts
 
 test "$umount_proc" && umount /proc && rmdir /proc
 
+export PS1="pending-$1# "
+exec /bin/sh
+
 # tcsattr(tty, TIOCDRAIN, mode) to drain tty messages to console
 test -t 1 && stty cooked 0<&1
 
@@ -104,3 +128,15 @@ echo "Execute ${1-reboot} -f if all unmounted ok, or exec /init"
 
 export PS1=shutdown-sh#\
 exec /bin/sh
+
+
+# musings to preserve /run/initramfs before switch_root damage
+copy=/run/mnt/initramfs
+mkdir -p $copy
+mount -t tmpfs initrd $copy
+cp -rp $api $copy
+for f in "proc sys dev run"
+do
+	mount --bind $f $copy
+done
+pivot_root $copy $copy/$copy
